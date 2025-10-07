@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sepsis · Glucocorticoids Recommendation — Web Calculator</title>
+  <style>
+    :root{
+      --bg:#ffffff;                /* pure white background */
+      --panel:#ffffff;             /* white card */
+      --panel-solid:#ffffff;
+      --text:#0f172a;              /* slate-900 */
+      --muted:#475569;             /* slate-600 */
+      --accent:#2563eb;            /* tech blue */
+      --accent-2:#7c3aed;          /* violet */
+      --ok:#10b981;                /* green */
+      --warn:#f59e0b;              /* amber */
+      --bad:#ef4444;               /* red */
+      --card-blur:0px;
+      --radius:16px;
+      --shadow:0 16px 40px rgba(2,6,23,.08), 0 1px 2px rgba(2,6,23,.04);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      color:var(--text); background: var(--bg);
+    }
+    .wrap{max-width:1200px; margin:40px auto; padding:0 20px}
+    header{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+    .logo{
+      width:44px; height:44px; border-radius:12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow:0 8px 26px rgba(37,99,235,.35);
+    }
+    h1{font-weight:800; letter-spacing:.2px; font-size:24px; margin:0}
+
+    .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:22px;}
+    @media (max-width: 1024px){ .grid{grid-template-columns:1fr;}}
+
+    .panel{
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border:1px solid #e5e7eb;
+    }
+    .panel .hd{
+      padding:16px 18px; border-bottom:1px solid #e5e7eb;
+      display:flex; align-items:center; justify-content:space-between
+    }
+    .panel .hd h2{margin:0; font-size:16px; letter-spacing:.2px}
+    .panel .bd{padding:16px 18px}
+
+    .two{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+    @media (max-width: 760px){ .two{grid-template-columns:1fr}}
+
+    label{font-size:13px; color:var(--muted)}
+    .input, select, .checkboxes{
+      width:100%; background:#ffffff; color:var(--text);
+      border:1px solid #e5e7eb;
+      border-radius:12px; padding:10px 12px; outline:none;
+      transition:.2s border-color, .2s box-shadow
+    }
+    .input:focus, select:focus{border-color: var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+
+    .fieldset{display:flex; flex-direction:column; gap:6px}
+    .section{display:flex; flex-direction:column; gap:12px; margin-bottom:14px}
+    .muted{color:var(--muted); font-size:12px}
+
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:12px;
+      background:#f8fafc; border:1px solid #e2e8f0;
+    }
+    .chip input{accent-color: var(--accent)}
+
+    .uploader{
+      border:1px dashed #cbd5e1;
+      padding:16px; border-radius:14px; background:#f8fafc
+    }
+
+    .btn{
+      appearance:none; border:none; padding:10px 14px; border-radius:12px;
+      color:#ffffff; font-weight:700; cursor:pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow:0 10px 30px rgba(37,99,235,.25);
+      transition: transform .05s ease
+    }
+    .btn:hover{transform: translateY(-1px)}
+    .btn.ghost{
+      background:transparent; color:var(--accent);
+      border:1px solid #bfdbfe;
+      box-shadow:none;
+    }
+
+    .result{
+      background:var(--panel-solid); border-radius:var(--radius);
+      padding:18px; display:flex; flex-direction:column; gap:12px;
+      border:1px solid #e5e7eb
+    }
+    .badge{display:inline-flex; align-items:center; gap:10px; padding:8px 12px; border-radius:40px; font-weight:700; color:#07121c}
+    .badge.ok{background: linear-gradient(135deg, #34d399, #10b981)}
+    .badge.not{background: linear-gradient(135deg, #fcd34d, #f59e0b)}
+    .badge.warn{background: linear-gradient(135deg, #f87171, #ef4444)}
+
+    .explain{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+    .explain .card{
+      background:#ffffff; padding:10px 12px; border-radius:12px;
+      border:1px solid #e2e8f0
+    }
+
+    .table{width:100%; border-collapse: collapse; font-size:13px}
+    .table th,.table td{padding:8px 10px; border-bottom:1px solid #e5e7eb}
+    .table th{color:#64748b; font-weight:600;}
+
+    .footer{margin-top:22px; color:#64748b; font-size:12px}
+    .link{color:#2563eb; text-decoration:underline; cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo"></div>
+      <div>
+        <h1>Sepsis · Glucocorticoids Recommendation — Web Calculator</h1>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- ========= LEFT: INPUTS ========= -->
+      <section class="panel">
+        <div class="hd">
+          <h2>1) Patient Inputs</h2>
+          <div class="muted">Static variables + 0–6h dynamics (upload CSV)</div>
+        </div>
+        <div class="bd">
+          <!-- Static -->
+          <div class="section">
+            <h3>Static variables</h3>
+            <div class="two">
+              <div class="fieldset"><label>Age</label><input id="age" type="number" min="0" max="120" class="input" placeholder="e.g., 67"></div>
+              <div class="fieldset"><label>Gender</label>
+                <select id="gender" class="input">
+                  <option value="">Select...</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+              <div class="fieldset"><label>Ethnicity</label>
+                <select id="ethnicity" class="input">
+                  <option value="">Select...</option>
+                  <option>White</option>
+                  <option>Black</option>
+                  <option>Asian</option>
+                  <option>Hispanic/Latino</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="fieldset"><label>APACHE II (first ICU)</label>
+                <input id="apache" type="number" step="1" min="0" max="71" class="input" placeholder="e.g., 18">
+              </div>
+              <div class="fieldset"><label>GCS (first ICU)</label><input id="gcs" type="number" step="1" min="3" max="15" class="input" placeholder="3–15"></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3>Comorbidities (check all that apply)</h3>
+            <div class="chips" id="comorbidities"></div>
+          </div>
+
+          <!-- Dynamic -->
+          <div class="section">
+            <h3>Dynamic variables · Hours 1–6</h3>
+            <div class="muted">Upload a small CSV with rows for Hour 1–6 and columns using <b>exact</b> standard names.
+              <span class="link" id="downloadTemplate">Download template</span></div>
+            <div class="uploader">
+              <input id="csv" type="file" accept=".csv" />
+            </div>
+          </div>
+
+          <div class="two">
+            <button class="btn" id="run">Run Recommendation</button>
+            <button class="btn ghost" id="demo">Auto-fill demo</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========= RIGHT: OUTPUT ========= -->
+      <section class="panel">
+        <div class="hd"><h2>2) Output</h2>
+          <div class="muted">Recommendation + rationale</div></div>
+        <div class="bd">
+          <div class="result" id="result">
+            <div class="badge not">Waiting for inputs…</div>
+            <div class="muted">Upload dynamics (6 hours) and click <b>Run Recommendation</b>.</div>
+          </div>
+          <div class="footer">This UI computes early summaries (median, min/max) over hours 1–6 and applies a tunable heuristic rule. Replace the rule with your model weights when ready.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========= SUMMARY TABLES ========= -->
+    <section class="panel" style="margin-top:22px">
+      <div class="hd"><h2>3) Parsed 0–6h summaries</h2><div class="muted">Preview of features used by the rule</div></div>
+      <div class="bd">
+        <div id="summaries"></div>
+      </div>
+    </section>
+  </div>
+
+<script>
+/* ========================= Variables (standard English names) ========================= */
+const COMORBID_LIST = [
+  'myocardial infarction','heart failure','peripheral vascular disease','cerebrovascular disease',
+  'dementia','chronic obstructive pulmonary disease','rheumatic disease','peptic ulcer disease',
+  'chronic hepatitis','diabetes','paraplegia','chronic kidney disease','malignant tumor',
+  'cirrhosis','metastatic solid tumor','AIDS'
+];
+
+const DYNAMIC_HEADERS = [
+  'Hour','HR','RR','SBP','DBP','MAP','SpO2','Temperature',
+  'Potassium','Sodium','Chloride','Glucose',
+  'BUN','Creatinine',
+  'Total Bilirubin','Direct Bilirubin','ALT','AST','ALP','GGT','LDH','CK',
+  'WBC','CRP',
+  'INR','APTT','D-dimer','Platelet',
+  'pH','Lactate','HCO3','Base Excess',
+  'P/F ratio','PaO2'
+];
+
+/* ========================= Build UI: comorbidity chips ========================= */
+const chips = document.getElementById('comorbidities');
+COMORBID_LIST.forEach((name, i)=>{
+  const id = 'cmb_' + i;
+  chips.insertAdjacentHTML('beforeend',
+    `<label class="chip"><input type="checkbox" id="${id}"><span>${name}</span></label>`);
+});
+
+/* ========================= CSV template download ========================= */
+function downloadTemplate(){
+  const rows = [DYNAMIC_HEADERS.join(',')];
+  for(let h=1; h<=6; h++){
+    const r = new Array(DYNAMIC_HEADERS.length).fill('');
+    r[0] = h; // Hour
+    rows.push(r.join(','));
+  }
+  const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dynamic_0-6h_template.csv';
+  a.click();
+}
+document.getElementById('downloadTemplate').addEventListener('click', downloadTemplate);
+
+/* ========================= CSV parsing (tiny) ========================= */
+async function parseCSV(file){
+  const text = await file.text();
+  const lines = text.replace(/\r/g,'').split('\n').filter(Boolean);
+  const hdr = lines[0].split(',').map(s=>s.trim());
+  const missing = DYNAMIC_HEADERS.filter(h=>!hdr.includes(h));
+  if(missing.length){
+    throw new Error('CSV header missing columns: '+missing.join(', '));
+  }
+  const data = lines.slice(1).map(line=>{
+    const cells = line.split(',');
+    const o = {}; hdr.forEach((h,i)=> o[h] = cells[i]!==undefined && cells[i]!=='' ? Number(cells[i]) : null);
+    return o;
+  }).filter(r=>r.Hour>=1 && r.Hour<=6);
+  return data;
+}
+
+/* ========================= Feature engineering over 0–6h ========================= */
+function summarizeDynamics(rows){
+  const feats = {};
+  const cols = DYNAMIC_HEADERS.slice(1); // exclude Hour
+  const byCol = Object.fromEntries(cols.map(c=>[c, rows.map(r=>r[c]).filter(v=>v!=null && !Number.isNaN(v))]));
+  const median = a => !a.length ? null : (a=[...a].sort((x,y)=>x-y), a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2);
+  const min = a => a.length? Math.min(...a):null;
+  const max = a => a.length? Math.max(...a):null;
+
+  cols.forEach(c=>{ feats[c+':median'] = median(byCol[c]); });
+  feats['MAP:min'] = min(byCol['MAP']);
+  feats['SpO2:min'] = min(byCol['SpO2']);
+  feats['P/F ratio:min'] = min(byCol['P/F ratio']);
+  feats['Lactate:max'] = max(byCol['Lactate']);
+  feats['INR:max'] = max(byCol['INR']);
+  feats['APTT:max'] = max(byCol['APTT']);
+  feats['D-dimer:max'] = max(byCol['D-dimer']);
+  feats['Creatinine:max'] = max(byCol['Creatinine']);
+  feats['BUN:max'] = max(byCol['BUN']);
+  return feats;
+}
+
+/* ========================= Heuristic rule (you can replace with your model) ========================= */
+const RULE = {
+  thresholds:{
+    lowMAP:65, lowSpO2:90, lowPF:200, highLactate:2.0, highCRP:50, highWBC:20,
+    highINR:1.5, longAPTT:45, highDDimer:1.0, highCreat:2.0, highBUN:20,
+    highAPACHE:20
+  },
+  weights:{
+    MAPmin:2.2, SpO2min:1.5, PFmin:2.0,
+    Lactate:2.0, CRP:1.2, WBC:0.8,
+    INR:1.2, APTT:1.0, Ddimer:0.8, Creat:1.0, BUN:0.6,
+    age:0.6, gcs:0.6, comorb:0.3,
+    apache:0.8   // small weight for high APACHE II (first ICU)
+  },
+  cut: { recommend: 3.0, borderline: 2.0 }
+};
+
+function computeScore(staticIn, feats){
+  const t = RULE.thresholds, w = RULE.weights;
+  let s = 0, reasons=[];
+
+  const mm = feats['MAP:min'];
+  if(mm!=null && mm < t.lowMAP){ s += w.MAPmin; reasons.push(`MAP minimum < ${t.lowMAP} (=${mm})`); }
+
+  const spo = feats['SpO2:min'];
+  if(spo!=null && spo < t.lowSpO2){ s += w.SpO2min; reasons.push(`SpO₂ minimum < ${t.lowSpO2} (=${spo})`); }
+
+  const pf = feats['P/F ratio:min'];
+  if(pf!=null && pf < t.lowPF){ s += w.PFmin; reasons.push(`P/F ratio minimum < ${t.lowPF} (=${pf})`); }
+
+  const lac = feats['Lactate:max'];
+  if(lac!=null && lac > t.highLactate){ s += w.Lactate; reasons.push(`Lactate max > ${t.highLactate} (=${lac})`); }
+
+  const crp = feats['CRP:median'];
+  if(crp!=null && crp > t.highCRP){ s += w.CRP; reasons.push(`CRP median > ${t.highCRP} (=${crp})`); }
+
+  const wbc = feats['WBC:median'];
+  if(wbc!=null && (wbc > t.highWBC)){ s += w.WBC; reasons.push(`WBC median > ${t.highWBC} (=${wbc})`); }
+
+  const inr = feats['INR:max'];
+  if(inr!=null && inr > t.highINR){ s += w.INR; reasons.push(`INR max > ${t.highINR} (=${inr})`); }
+
+  const aptt = feats['APTT:max'];
+  if(aptt!=null && aptt > t.longAPTT){ s += w.APTT; reasons.push(`APTT max > ${t.longAPTT} (=${aptt})`); }
+
+  const dd = feats['D-dimer:max'];
+  if(dd!=null && dd > t.highDDimer){ s += w.Ddimer; reasons.push(`D-dimer max > ${t.highDDimer} (=${dd})`); }
+
+  const creat = feats['Creatinine:max'];
+  if(creat!=null && creat > t.highCreat){ s += w.Creat; reasons.push(`Creatinine max > ${t.highCreat} (=${creat})`); }
+
+  const bun = feats['BUN:max'];
+  if(bun!=null && bun > t.highBUN){ s += w.BUN; reasons.push(`BUN max > ${t.highBUN} (=${bun})`); }
+
+  // Static modifiers
+  if(staticIn.age>=70) { s += w.age; reasons.push(`Age ≥ 70`); }
+  if(staticIn.gcs!=null && staticIn.gcs<=8) { s += w.gcs; reasons.push(`GCS ≤ 8`); }
+  if(staticIn.apache!=null && staticIn.apache>=t.highAPACHE){ s += w.apache; reasons.push(`APACHE II (first ICU) ≥ ${t.highAPACHE}`); }
+  const cmb = staticIn.comorbidities.length;
+  if(cmb>=3){ s += w.comorb; reasons.push(`≥3 comorbidities`); }
+
+  // Ethnicity captured but not scored (kept for downstream use)
+  return {score:s, reasons};
+}
+
+function decide(score){
+  const c = RULE.cut;
+  if(score >= c.recommend) return {label:'Recommend glucocorticoids', tone:'ok'};
+  if(score >= c.borderline) return {label:'Borderline — consider glucocorticoids', tone:'not'};
+  return {label:'Do NOT recommend glucocorticoids', tone:'warn'};
+}
+
+/* ========================= Renderers ========================= */
+function renderResult(decision, score, reasons, feats){
+  const res = document.getElementById('result');
+  const toneClass = decision.tone;
+  const reasonList = reasons.length? `<ul>${reasons.map(r=>`<li>${r}</li>`).join('')}</ul>` : '<div class="muted">No rule triggers.</div>';
+
+  res.innerHTML = `
+    <div class="badge ${toneClass}">${decision.label}</div>
+    <div class="muted">Rule score: <b>${score.toFixed(2)}</b> (cutoffs: recommend ≥ ${RULE.cut.recommend}, borderline ≥ ${RULE.cut.borderline})</div>
+    <div class="explain">
+      <div class="card"><b>Triggers</b>${reasonList}</div>
+      <div class="card"><b>Key early summaries (0–6h)</b>
+        <table class="table">${Object.entries(feats).filter(([k,v])=>v!=null && ['MAP:min','SpO2:min','P/F ratio:min','Lactate:max','CRP:median','WBC:median','INR:max','APTT:max','D-dimer:max','Creatinine:max','BUN:max'].includes(k)).map(([k,v])=>`<tr><td>${k}</td><td style="text-align:right">${Number(v.toFixed? v.toFixed(3): v)}</td></tr>`).join('')}</table>
+      </div>
+    </div>`;
+}
+
+function renderSummaries(feats){
+  const host = document.getElementById('summaries');
+  const rows = Object.entries(feats).map(([k,v])=> `<tr><td>${k}</td><td style="text-align:right">${v==null?'<span class="muted">NA</span>':Number(v.toFixed? v.toFixed(4): v)}</td></tr>`).join('');
+  host.innerHTML = `<table class="table"><thead><tr><th>Feature</th><th style="text-align:right">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ========================= DEMO autofill ========================= */
+function fillDemo(){
+  // Static fields
+  document.getElementById('age').value = 72;
+  document.getElementById('gender').value = 'Male';
+  document.getElementById('ethnicity').value = 'White';
+  document.getElementById('apache').value = 21;
+  document.getElementById('gcs').value = 9;
+
+  // Check a few comorbidities
+  ['cmb_1','cmb_10','cmb_12'].forEach(id=>{ const el=document.getElementById(id); if(el) el.checked=true; });
+
+  // Build a tiny CSV in-memory and set to file input via DataTransfer
+  const hdr = DYNAMIC_HEADERS.join(',');
+  const rows = [hdr];
+  for(let h=1; h<=6; h++){
+    const r = {
+      'Hour':h,
+      'HR': 92+Math.random()*8,
+      'RR': 22+Math.random()*3,
+      'SBP': 105+Math.random()*10,
+      'DBP': 58+Math.random()*6,
+      'MAP': 63+Math.random()*6, // may dip below 65
+      'SpO2': 90+Math.random()*6,
+      'Temperature': 37+Math.random()*0.7,
+      'Potassium': 4.5+Math.random()*0.3,
+      'Sodium': 141+Math.random()*3,
+      'Chloride': 106+Math.random()*3,
+      'Glucose': 8+Math.random()*2,
+      'BUN': 18+Math.random()*6,
+      'Creatinine': 1.6+Math.random()*0.6,
+      'Total Bilirubin': 18+Math.random()*5,
+      'Direct Bilirubin': 6+Math.random()*3,
+      'ALT': 38+Math.random()*12,
+      'AST': 42+Math.random()*16,
+      'ALP': 95+Math.random()*25,
+      'GGT': 58+Math.random()*18,
+      'LDH': 320+Math.random()*60,
+      'CK': 120+Math.random()*40,
+      'WBC': 16+Math.random()*5,
+      'CRP': 80+Math.random()*25,
+      'INR': 1.3+Math.random()*0.3,
+      'APTT': 40+Math.random()*8,
+      'D-dimer': 1.2+Math.random()*0.6,
+      'Platelet': 180+Math.random()*60,
+      'pH': 7.32+Math.random()*0.07,
+      'Lactate': 2+Math.random()*1.2,
+      'HCO3': 22+Math.random()*4,
+      'Base Excess': -2 + Math.random()*4,
+      'P/F ratio': 180+Math.random()*60,
+      'PaO2': 80+Math.random()*20
+    };
+    const row = DYNAMIC_HEADERS.map(k=> r[k]!==undefined ? r[k] : '').join(',');
+    rows.push(row);
+  }
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const file = new File([blob], 'demo_0-6h.csv', {type:'text/csv'});
+  const dt = new DataTransfer(); dt.items.add(file);
+  document.getElementById('csv').files = dt.files;
+}
+
+/* ========================= Run ========================= */
+async function run(){
+  const age = Number(document.getElementById('age').value || 'NaN');
+  const gender = document.getElementById('gender').value;
+  const ethnicity = document.getElementById('ethnicity').value; // captured but not scored
+  const apache = Number(document.getElementById('apache').value || 'NaN'); // APACHE II (first ICU)
+  const gcs = Number(document.getElementById('gcs').value || 'NaN');
+  const comorbidities = COMORBID_LIST.map((name,i)=> document.getElementById('cmb_'+i).checked ? name : null).filter(Boolean);
+
+  const file = document.getElementById('csv').files[0];
+  if(!file){ alert('Please upload the 0–6h dynamics CSV (use the template).'); return; }
+
+  let rows; try{ rows = await parseCSV(file); }catch(e){ alert(e.message); return; }
+  const feats = summarizeDynamics(rows);
+  const {score, reasons} = computeScore({age, gender, ethnicity, apache, gcs, comorbidities}, feats);
+  const decision = decide(score);
+  renderResult(decision, score, reasons, feats);
+  renderSummaries(feats);
+}
+
+document.getElementById('run').addEventListener('click', run);
+document.getElementById('demo').addEventListener('click', fillDemo);
+</script>
+</body>
+</html>
